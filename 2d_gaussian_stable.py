@@ -29,7 +29,9 @@ class Gaussian2D(nn.Module):
         covariances = torch.matmul(self.scale, self.scale.transpose(1,2))
         covariances = torch.matmul(covariances, self.rotation.transpose(1,2))
         covariances = torch.matmul(self.rotation, covariances)
-        covariances.add_(torch.eye(covariances.shape[0]))
+        #https://math.stackexchange.com/questions/357980/how-to-generate-random-symmetric-positive-definite-matrices-using-matlab
+        # Add identity matrix to make it positive definite, borrowed from above link
+        covariances.add_(torch.eye(covariances.shape[1]).repeat(covariances.shape[0],1,1).to('cuda'))
         return covariances
     
     def forward(self):
@@ -39,7 +41,7 @@ class Gaussian2D(nn.Module):
         # Get covariances
         self.covariances = self.get_covariances()
         # Apply Gaussian to RGB channels
-        gaussian_vals = gaussian_2d_batch(self.means,self.covariances,self.image_size)
+        gaussian_vals = gaussian_2d_batch_unstable(self.means,self.covariances,self.image_size)
         gaussian_rgb =  rgb.view(*rgb.shape[:1],1,1,rgb.shape[1]) \
               * gaussian_vals.unsqueeze(-1).repeat(1,1,1,1,3).squeeze(0)
         # Alpha blending
@@ -53,6 +55,7 @@ if __name__ == '__main__':
     args= argparse.ArgumentParser()
     args.add_argument("--num_gaussians", type=int, default=100)
     args.add_argument("--image_path", type=str, default="canvas.png")
+    args.add_argument("--no_iterations", type=int, default=1000)
     args = args.parse_args()
     results_path = "results"
     try:
@@ -70,10 +73,11 @@ if __name__ == '__main__':
     loss_l2 = torch.nn.MSELoss()
     opt = torch.optim.Adam(model.parameters(), lr=0.01)
     with torch.autograd.set_detect_anomaly(True):
-        for i in range(1000):
+        for i in range(args.no_iterations):
             # Forward pass
             reconstructed_image = model()
-            loss_value = loss_l2(img_tensor, reconstructed_image) + loss_l1(img_tensor, reconstructed_image)
+            loss_value = loss_l2(img_tensor, reconstructed_image) + loss_l1(img_tensor, reconstructed_image)\
+            + 0.01 * torch.linalg.norm(model.convariances, dim=1, ord=2).sum()
             # Backward pass
             opt.zero_grad()  # Clear existing gradients
             loss_value.backward()
@@ -82,7 +86,9 @@ if __name__ == '__main__':
                 cv2.imwrite(os.path.join(results_path,f"{str(i)}.png"), \
                         cv2.cvtColor(reconstructed_image.detach().cpu().numpy()*255,cv2.COLOR_RGB2BGR))
             # Compute loss
+            if (loss_value.item() < 0.05):
+                break
             print("Epoch: {}, Loss: {:.5f}".format(i, loss_value.item()))
 
-    cv2.imwrite("reconstructed_image.png", reconstructed_image.detach().cpu().numpy())
+    cv2.imwrite(f"reconstructed_image.png in {i} iterations", reconstructed_image.detach().cpu().numpy()*255)
 

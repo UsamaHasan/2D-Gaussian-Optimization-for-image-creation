@@ -9,7 +9,7 @@ Further I have tested the code on Pytorch 1.3.1 on ubuntu 20.04.
 
 ## Testing
 ``
-python 2d_gaussian.py --num_gaussians $NUM_OF_GAUSSIAN_TO_FIT --image_path $PATH_TO_INPUT_IMAGE
+python 2d_gaussian_stable.py --num_gaussians $NUM_OF_GAUSSIAN_TO_FIT --image_path $PATH_TO_INPUT_IMAGE
 ``
 
 ## Implementation 
@@ -17,4 +17,4 @@ I have tried to write multiple implementations due to the fact the covariance ma
 
 ## Results.
 Input Image: ![](https://github.com/UsamaHasan/2D-Gaussian-Optimization-for-image-creation/blob/master/canvas.png) 
-Output Generation: ![](https://github.com/UsamaHasan/2D-Gaussian-Optimization-for-image-creation/blob/master/res/optim_output.gif)
+Output Generation: ![](https://github.com/UsamaHasan/2D-Gaussian-Optimization-for-image-creation/blob/master/res/results.gif)

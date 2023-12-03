@@ -44,10 +44,12 @@ if __name__ == '__main__':
     args= argparse.ArgumentParser()
     args.add_argument("--num_gaussians", type=int, default=100)
     args.add_argument("--image_path", type=str, default="canvas.png")
+    args.add_argument("--no_iterations", type=int, default=1000)
+
     args = args.parse_args()
     results_path = "results"
     try:
-        os.makesdir(results_path, exist_ok=True)
+        os.makedirs(results_path, exist_ok=True)
     except:
         raise Exception("Cannot create results folder")
     
@@ -64,16 +66,19 @@ if __name__ == '__main__':
         for i in range(1000):
             # Forward pass
             reconstructed_image = model()
-            loss_value = loss_l1(img_tensor, reconstructed_image) + loss_l1(img_tensor, reconstructed_image)
+            loss_value = 2 * loss_l2(img_tensor, reconstructed_image) + 2 * loss_l1(img_tensor, reconstructed_image) 
+            #+ 0.01 * torch.linalg.norm(model.covariances, dim=1, ord=2).sum()
             # Backward pass
-            opt.zero_grad()  # Clear existing gradients
+            opt.zero_grad()  
             loss_value.backward()
             opt.step()            
             if(i%10 == 0):
                 cv2.imwrite(os.path.join(results_path,f"{str(i)}.png"), \
                         cv2.cvtColor(reconstructed_image.detach().cpu().numpy()*255,cv2.COLOR_RGB2BGR))
-            # Compute loss
+            if (loss_value.item() < 0.05):
+                break
+            # print loss
             print("Epoch: {}, Loss: {:.5f}".format(i, loss_value.item()))
 
-    cv2.imwrite("reconstructed_image.png", reconstructed_image.detach().cpu().numpy())
+    cv2.imwrite(f"reconstructed_image.png in {i} iterations", reconstructed_image.detach().cpu().numpy()*255)
 
