@@ -11,15 +11,16 @@ class Gaussian2D(nn.Module):
     def __init__(self, img_s, num_gaussians):
         super(Gaussian2D, self).__init__()
         self.image_size = img_s.shape
-        self.num_gaussians = num_gaussians
+        
         self.grid_size = math.floor(math.sqrt(num_gaussians))
+        self.num_gaussians = math.floor(math.sqrt(num_gaussians)) ** 2
         # Parameters for Gaussians
         x_ = torch.linspace(0, self.image_size[0], self.grid_size) /  self.image_size[0]
         y_ = torch.linspace(0, self.image_size[1], self.grid_size) /  self.image_size[1]
         x_ , y_ = torch.meshgrid(x_, y_)
-        means = torch.stack((x_, y_), dim=2).view(self.num_gaussians,2,1)
-        self.scale = nn.Parameter(torch.randn(num_gaussians, 2, 1))
-        self.rotation = nn.Parameter(torch.randn(num_gaussians, 2, 2))
+        means = torch.stack((x_, y_), dim=2).view(self.grid_size**2,2,1)
+        self.scale = nn.Parameter(torch.randn(self.num_gaussians, 2, 1))
+        self.rotation = nn.Parameter(torch.randn(self.num_gaussians, 2, 2))
         self.means = nn.Parameter(means)
         self.colors = nn.Parameter(torch.rand(self.num_gaussians, 4))  # gaussians x RGBA
         self.convariances = torch.zeros(self.num_gaussians, 2, 2)
@@ -90,5 +91,6 @@ if __name__ == '__main__':
                 break
             print("Epoch: {}, Loss: {:.5f}".format(i, loss_value.item()))
 
-    cv2.imwrite(f"reconstructed_image.png in {i} iterations", reconstructed_image.detach().cpu().numpy()*255)
+    
+    cv2.imwrite(f"reconstructed_image.png in {i} iterations",cv2.cvtColor(reconstructed_image.detach().cpu().numpy()*255,cv2.COLOR_RGB2BGR))
 
